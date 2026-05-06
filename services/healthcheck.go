@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"time"
 
 	"github.com/go-job-runner/database"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,8 +14,9 @@ import (
 var ErrUnsupportedJobType = errors.New("unsupported job_type")
 
 type HealthcheckPayload struct {
-	JobType string   `json:"job_type"`
-	URLList []string `json:"url_list"`
+	JobType     string    `json:"job_type"`
+	URLList     []string  `json:"url_list"`
+	ScheduledAt time.Time `json:"scheduled_at"`
 }
 
 func HealthCheckService(ctx context.Context, db *pgxpool.Pool, payload HealthcheckPayload) (string, string, error) {
@@ -22,14 +24,21 @@ func HealthCheckService(ctx context.Context, db *pgxpool.Pool, payload Healthche
 		return "", "failed", ErrUnsupportedJobType
 	}
 
-	log.Printf("decoded job_type=%s url_count=%d", payload.JobType, len(payload.URLList))
-
 	jobRepo := database.NewRepository[any](db, "jobs")
 	jobResultsRepo := database.NewRepository[any](db, "job_results")
 
+	log.Printf("decoded job_type=%s url_count=%d", payload.JobType, len(payload.URLList))
+
+	status := "pending"
+	var scheduledAt any = nil
+	if !payload.ScheduledAt.IsZero() && payload.ScheduledAt.After(time.Now()) {
+		status = "scheduled"
+		scheduledAt = payload.ScheduledAt
+	}
+
 	jobID, err := jobRepo.CreateAndReturnID(ctx,
-		[]string{"type", "status"},
-		[]any{payload.JobType, "pending"},
+		[]string{"type", "status", "scheduled_at"},
+		[]any{payload.JobType, status, scheduledAt},
 	)
 	if err != nil {
 		return "", "failed", err
@@ -45,5 +54,5 @@ func HealthCheckService(ctx context.Context, db *pgxpool.Pool, payload Healthche
 		return "", "failed", err
 	}
 
-	return jobID, "pending", nil
+	return jobID, status, nil
 }
