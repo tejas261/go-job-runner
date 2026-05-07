@@ -13,36 +13,28 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func enqueueWhenDue(ctx context.Context, pool *pgxpool.Pool, payload string, channel chan string) {
+func enqueueWhenDue(payload string, channel chan string) {
 	var notification struct {
-		ID string `json:"id"`
+		ID          string    `json:"id"`
+		ScheduledAt time.Time `json:"scheduled_at"`
 	}
 	if err := json.Unmarshal([]byte(payload), &notification); err != nil {
 		log.Printf("failed to parse notification payload: %v", err)
 		return
 	}
 
-	var scheduledAt *time.Time
-	if err := pool.QueryRow(ctx, "SELECT scheduled_at FROM jobs WHERE id = $1", notification.ID).Scan(&scheduledAt); err != nil {
-		log.Printf("failed to fetch schedule for job %s: %v", notification.ID, err)
-		return
-	}
+	scheduledAt := notification.ScheduledAt
 
-	if scheduledAt == nil || !scheduledAt.After(time.Now()) {
+	if scheduledAt.IsZero() || !scheduledAt.After(time.Now()) {
 		channel <- payload
 		return
 	}
 
-	delay := time.Until(*scheduledAt)
-	timer := time.NewTimer(delay)
-	defer timer.Stop()
-
-	select {
-	case <-ctx.Done():
-		return
-	case <-timer.C:
+	delay := time.Until(scheduledAt)
+	fmt.Println("Job will be run on-->", scheduledAt)
+	time.AfterFunc(delay, func() {
 		channel <- payload
-	}
+	})
 }
 
 func listenToPostgres(ctx context.Context, pool *pgxpool.Pool, channel chan string) {
@@ -72,7 +64,7 @@ func listenToPostgres(ctx context.Context, pool *pgxpool.Pool, channel chan stri
 		}
 		fmt.Println("Received notification", notification)
 		fmt.Printf("Received notification on channel '%s': %s\n", notification.Channel, notification.Payload)
-		go enqueueWhenDue(ctx, pool, notification.Payload, channel)
+		go enqueueWhenDue(notification.Payload, channel)
 	}
 }
 
@@ -121,7 +113,6 @@ func processJobs(ctx context.Context, pool *pgxpool.Pool, jobCh <-chan string, w
 }
 
 func RunWorker() {
-	// Example setup
 	pool, err := pgxpool.New(context.Background(), configs.Creds.DB_URL)
 	if err != nil {
 		log.Fatal(err)
@@ -135,11 +126,60 @@ func RunWorker() {
 		log.Fatal(err)
 	}
 
+	jobRepo := database.NewRepository[any](pool, "jobs")
+	rows, err := jobRepo.FindRowsByColumn(
+		ctx,
+		"status",
+		"scheduled",
+		[]string{"id", "type", "scheduled_at"},
+	)
+	fmt.Println("Found rows-->", rows)
+	if err != nil {
+		log.Printf("failed to query scheduled jobs: %v", err)
+	} else {
+		defer rows.Close()
+
+		for rows.Next() {
+			var (
+				id          string
+				jobType     string
+				scheduledAt *time.Time
+			)
+
+			if scanErr := rows.Scan(&id, &jobType, &scheduledAt); scanErr != nil {
+				log.Printf("failed to scan scheduled job row: %v", scanErr)
+				continue
+			}
+
+			if scheduledAt == nil {
+				log.Printf("scheduled job id=%s type=%s scheduled_at=NULL", id, jobType)
+				continue
+			}
+
+			if scheduledAt.After(time.Now()) {
+				msg, err := json.Marshal(map[string]any{
+					"id":           id,
+					"job_type":     jobType,
+					"scheduled_at": scheduledAt,
+				})
+				if err != nil {
+					log.Printf("failed to marshal scheduled job notification: %v", err)
+					continue
+				}
+				enqueueWhenDue(string(msg), notificationChannel)
+			}
+		}
+
+		if rowsErr := rows.Err(); rowsErr != nil {
+			log.Printf("error while iterating scheduled jobs: %v", rowsErr)
+		}
+	}
+
 	for i := range configs.Creds.WORKERS {
 		go processJobs(ctx, pool, notificationChannel, i)
 	}
 
-	// Start listening
+	// Start listening to postgres
 	listenToPostgres(context.Background(), pool, notificationChannel)
 
 }

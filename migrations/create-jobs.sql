@@ -30,7 +30,7 @@ CREATE OR REPLACE FUNCTION notify_new_job() RETURNS trigger AS $$
   BEGIN
       PERFORM pg_notify(
           'new_job',
-          json_build_object('id', NEW.id, 'job_type', NEW.type)::text
+          json_build_object('id', NEW.id, 'job_type', NEW.type, 'scheduled_at', NEW.scheduled_at)::text
       );
       RETURN NEW;
   END;

@@ -62,6 +62,22 @@ func (r *Repository[T]) FindByID(ctx context.Context, id string, scanner func(pg
 	return scanner(row)
 }
 
+
+func (r *Repository[T]) FindRowsByColumn(ctx context.Context, targetColumn string, targetValue any, returnColumns []string) (pgx.Rows, error) {
+	if len(returnColumns) == 0 {
+		return nil, fmt.Errorf("returnColumns cannot be empty")
+	}
+
+	query := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s = $1",
+		strings.Join(returnColumns, ", "),
+		r.Table,
+		targetColumn,
+	)
+
+	return r.DB.Query(ctx, query, targetValue)
+}
+
 // Update specific columns by ID
 func (r *Repository[T]) UpdateByID(ctx context.Context, id string, columns []string, values []any) error {
 	setClauses := make([]string, len(columns))
