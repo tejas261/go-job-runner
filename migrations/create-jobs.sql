@@ -19,12 +19,22 @@ CREATE TABLE jobs (
       result_data JSONB NOT NULL,                                                                                            
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()                                                                           
   );
-   
-CREATE INDEX idx_job_results_job_id ON job_results(job_id);   
+
+  CREATE TABLE schedules (                                                                                                                                 
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),                                                                                                       
+     job_type VARCHAR(50) NOT NULL,                                                                                                                        
+     job_payload JSONB,
+     cron_expression TEXT NOT NULL,                                                                                                                        
+     next_run TIMESTAMPTZ NOT NULL                                                                                                                         
+  );
 
 CREATE INDEX idx_jobs_status ON jobs(status);
 CREATE INDEX idx_jobs_scheduled_at ON jobs(scheduled_at) WHERE scheduled_at IS NOT NULL;
 CREATE INDEX idx_jobs_type ON jobs(type);
+
+CREATE INDEX idx_job_results_job_id ON job_results(job_id);  
+
+CREATE INDEX idx_job_schedules_next_run ON schedules(next_run);
 
 CREATE OR REPLACE FUNCTION notify_new_job() RETURNS trigger AS $$
   BEGIN

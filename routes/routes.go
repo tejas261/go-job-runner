@@ -56,11 +56,14 @@ func CreateJob(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	response := map[string]any{
 		"success": true,
 		"status":  status,
-		"job_id":  jobID,
-	})
+	}
+	if jobID != "" {
+		response["job_id"] = jobID
+	}
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func GetJobStatusByID(w http.ResponseWriter, r *http.Request) {

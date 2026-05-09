@@ -62,7 +62,6 @@ func (r *Repository[T]) FindByID(ctx context.Context, id string, scanner func(pg
 	return scanner(row)
 }
 
-
 func (r *Repository[T]) FindRowsByColumn(ctx context.Context, targetColumn string, targetValue any, returnColumns []string) (pgx.Rows, error) {
 	if len(returnColumns) == 0 {
 		return nil, fmt.Errorf("returnColumns cannot be empty")
@@ -70,6 +69,36 @@ func (r *Repository[T]) FindRowsByColumn(ctx context.Context, targetColumn strin
 
 	query := fmt.Sprintf(
 		"SELECT %s FROM %s WHERE %s = $1",
+		strings.Join(returnColumns, ", "),
+		r.Table,
+		targetColumn,
+	)
+
+	return r.DB.Query(ctx, query, targetValue)
+}
+
+func (r *Repository[T]) FindRowsByColumnGT(ctx context.Context, targetColumn string, targetValue any, returnColumns []string) (pgx.Rows, error) {
+	if len(returnColumns) == 0 {
+		return nil, fmt.Errorf("returnColumns cannot be empty")
+	}
+
+	query := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s > $1",
+		strings.Join(returnColumns, ", "),
+		r.Table,
+		targetColumn,
+	)
+
+	return r.DB.Query(ctx, query, targetValue)
+}
+
+func (r *Repository[T]) FindRowsByColumnLTE(ctx context.Context, targetColumn string, targetValue any, returnColumns []string) (pgx.Rows, error) {
+	if len(returnColumns) == 0 {
+		return nil, fmt.Errorf("returnColumns cannot be empty")
+	}
+
+	query := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s <= $1",
 		strings.Join(returnColumns, ", "),
 		r.Table,
 		targetColumn,

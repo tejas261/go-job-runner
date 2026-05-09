@@ -32,11 +32,16 @@ func Run(ctx context.Context, jobID string, jobType string, payload []byte) erro
 		}
 		wg.Wait()
 
+		resultJSON, err := json.Marshal(results)
+		if err != nil {
+			return err
+		}
+
 		jobResultsRepo := database.NewRepository[any](database.DB, "job_results")
 
 		fmt.Println("Storing this results -->", results)
 
-		return jobResultsRepo.UpdateByColumn(context.Background(), "job_id", jobID, []string{"result_data"}, []any{results})
+		return jobResultsRepo.UpdateByColumn(context.Background(), "job_id", jobID, []string{"result_data"}, []any{string(resultJSON)})
 	}
 
 	return fmt.Errorf("unknown job type: %s", jobType)
