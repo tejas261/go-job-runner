@@ -15,7 +15,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func main() {
+func Seed() {
 	ctx := context.Background()
 
 	if err := godotenv.Load(); err != nil {
@@ -63,10 +63,9 @@ func main() {
 	}
 
 	fmt.Println("Database seeded successfully from all SQL files!")
-	// deleteTables()
 }
 
-func deleteTables() {
+func Purge() {
 	// Replace with your connection string
 	godotenv.Load()
 	connStr := os.Getenv("DB_URL")
@@ -98,4 +97,16 @@ func deleteTables() {
 	}
 
 	fmt.Println("All tables dropped successfully.")
+}
+
+func main() {
+	if len(os.Args) < 2 {
+		log.Fatal("usage: go run migrations/*.go [seed|purge]")
+	}
+	switch os.Args[1] {
+	case "seed":
+		Seed()
+	case "purge":
+		Purge()
+	}
 }
