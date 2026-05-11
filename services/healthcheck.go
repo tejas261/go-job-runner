@@ -40,8 +40,8 @@ func HealthCheckService(ctx context.Context, db *pgxpool.Pool, payload Healthche
 		return "", "Cron job created", err
 	}
 
-	jobRepo := database.NewRepository[any](db, "jobs")
-	jobResultsRepo := database.NewRepository[any](db, "job_results")
+	jobRepo := database.NewRepository[any](db, "job")
+	jobResultsRepo := database.NewRepository[any](db, "job_result")
 
 	log.Printf("decoded job_type=%s url_count=%d", payload.JobType, len(payload.URLList))
 
@@ -78,7 +78,7 @@ type SchedulePayload struct {
 }
 
 func PushJobToSchedulesTable(pool *pgxpool.Pool, payload SchedulePayload) (string, error) {
-	scheduleRepo := database.NewRepository[any](pool, "schedules")
+	scheduleRepo := database.NewRepository[any](pool, "schedule")
 	ctx := context.Background()
 
 	scheduleCron, err := cron.ParseStandard(payload.CronExpression)

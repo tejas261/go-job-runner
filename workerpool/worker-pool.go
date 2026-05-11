@@ -77,7 +77,7 @@ func listenToPostgres(ctx context.Context, pool *pgxpool.Pool, channel chan stri
 }
 
 func processJobs(ctx context.Context, pool *pgxpool.Pool, jobCh <-chan string, workerID int) {
-	jobRepo := database.NewRepository[any](pool, "jobs")
+	jobRepo := database.NewRepository[any](pool, "job")
 
 	for msg := range jobCh {
 		var notification jobNotification
@@ -119,10 +119,10 @@ func processJobs(ctx context.Context, pool *pgxpool.Pool, jobCh <-chan string, w
 	}
 }
 
-func pollScheduledJobs(pool *pgxpool.Pool, channel chan string) {
-	scheduleRepo := database.NewRepository[any](pool, "schedules")
-	jobRepo := database.NewRepository[any](pool, "jobs")
-	jobResultsRepo := database.NewRepository[any](pool, "job_results")
+func pollScheduledJobs(pool *pgxpool.Pool) {
+	scheduleRepo := database.NewRepository[any](pool, "schedule")
+	jobRepo := database.NewRepository[any](pool, "job")
+	jobResultsRepo := database.NewRepository[any](pool, "job_result")
 	ctx := context.Background()
 	ticker := time.NewTicker(10 * time.Second)
 
@@ -208,7 +208,7 @@ func RunWorker() {
 		log.Fatal(err)
 	}
 
-	jobRepo := database.NewRepository[any](pool, "jobs")
+	jobRepo := database.NewRepository[any](pool, "job")
 	rows, err := jobRepo.FindRowsByColumn(
 		ctx,
 		"status",
@@ -253,7 +253,7 @@ func RunWorker() {
 		go processJobs(ctx, pool, notificationChannel, i)
 	}
 
-	go pollScheduledJobs(pool, notificationChannel)
+	go pollScheduledJobs(pool)
 
 	// Start listening to postgres
 	listenToPostgres(context.Background(), pool, notificationChannel)

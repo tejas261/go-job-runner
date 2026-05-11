@@ -10,7 +10,7 @@ import (
 )
 
 func GetJobStatus(ctx context.Context, db *pgxpool.Pool, jobID string) (string, error) {
-	jobRepo := database.NewRepository[any](db, "jobs")
+	jobRepo := database.NewRepository[any](db, "job")
 
 	status, err := jobRepo.FindByID(ctx, jobID, func(row pgx.Row) (any, error) {
 		var id string

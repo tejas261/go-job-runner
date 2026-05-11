@@ -37,7 +37,7 @@ func Run(ctx context.Context, jobID string, jobType string, payload []byte) erro
 			return err
 		}
 
-		jobResultsRepo := database.NewRepository[any](database.DB, "job_results")
+		jobResultsRepo := database.NewRepository[any](database.DB, "job_result")
 
 		fmt.Println("Storing this results -->", results)
 
