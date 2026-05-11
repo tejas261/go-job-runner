@@ -1,6 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-CREATE TABLE jobs (
+CREATE TABLE job (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     type VARCHAR(50) NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
@@ -12,15 +12,15 @@ CREATE TABLE jobs (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-  CREATE TABLE job_results (                                                                                                  
+  CREATE TABLE job_result (                                                                                                  
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),                                                                         
-      job_id UUID NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,   
+      job_id UUID NOT NULL REFERENCES job(id) ON DELETE CASCADE,   
       job_payload JSONB,
       result_data JSONB NOT NULL,                                                                                            
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()                                                                           
   );
 
-  CREATE TABLE schedules (                                                                                                                                 
+  CREATE TABLE schedule (                                                                                                                                 
      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),                                                                                                       
      job_type VARCHAR(50) NOT NULL,                                                                                                                        
      job_payload JSONB,
@@ -28,13 +28,13 @@ CREATE TABLE jobs (
      next_run TIMESTAMPTZ NOT NULL                                                                                                                         
   );
 
-CREATE INDEX idx_jobs_status ON jobs(status);
-CREATE INDEX idx_jobs_scheduled_at ON jobs(scheduled_at) WHERE scheduled_at IS NOT NULL;
-CREATE INDEX idx_jobs_type ON jobs(type);
+CREATE INDEX idx_jobs_status ON job(status);
+CREATE INDEX idx_jobs_scheduled_at ON job(scheduled_at) WHERE scheduled_at IS NOT NULL;
+CREATE INDEX idx_jobs_type ON job(type);
 
-CREATE INDEX idx_job_results_job_id ON job_results(job_id);  
+CREATE INDEX idx_job_results_job_id ON job_result(job_id);  
 
-CREATE INDEX idx_job_schedules_next_run ON schedules(next_run);
+CREATE INDEX idx_job_schedules_next_run ON schedule(next_run);
 
 CREATE OR REPLACE FUNCTION notify_new_job() RETURNS trigger AS $$
   BEGIN
@@ -47,5 +47,5 @@ CREATE OR REPLACE FUNCTION notify_new_job() RETURNS trigger AS $$
   $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER job_inserted
-  AFTER INSERT ON jobs
+  AFTER INSERT ON job
   FOR EACH ROW EXECUTE FUNCTION notify_new_job();
