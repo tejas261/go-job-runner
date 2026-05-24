@@ -1,16 +1,38 @@
-name: Build and Push Image to Docker Hub
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [master, main]
-  pull_request:
-    branches: [master, main]
+    branches: [main]
 
 env:
   IMAGE_NAME: ${{ secrets.DOCKER_HUB_USERNAME }}/job-runner
 
 jobs:
+  Infra-Setup:
+    if: contains(join(github.event.commits.*.modified, ','), 'infra/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: infra
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+        working-directory: infra
   Build-and-Push:
+    needs: Infra-Setup
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -33,7 +55,6 @@ jobs:
           tags: |
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.IMAGE_NAME }}:latest
-
   Update-Image-Tag-ArgoCD:
     needs: Build-and-Push
     runs-on: ubuntu-latest
@@ -48,4 +69,3 @@ jobs:
           git add job-runner-chart/values.yaml
           git commit -m "update image tag to ${{ github.sha }}"
           git push
-
