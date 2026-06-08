@@ -9,7 +9,7 @@ A concurrent job execution system built in Go using a worker pool pattern with P
                                   │                   PostgreSQL                        │
                                   │                                                     │
                                   │  ┌────────────┐  ┌──────────────┐                   │
-                                  │  │   jobs      │  │ job_results  │                   │
+                                  │  │   jobs      │  │ job_result  │                   │
                                   │  │            ◄├──┤►             │                   │
                                   │  │ id (UUID)   │  │ job_id (FK)  │                   │
                                   │  │ type        │  │ job_payload  │                   │
@@ -81,7 +81,7 @@ jobs/
   handler.go               Job dispatcher — routes job types to their handlers
   healthcheck.go           Health check job — concurrent HTTP checks with WaitGroup
 migrations/
-  create-jobs.sql           Schema: jobs + job_results tables, indexes, NOTIFY trigger
+  create-jobs.sql           Schema: jobs + job_result tables, indexes, NOTIFY trigger
   seed.go                   Migration runner — executes .sql files in order
 routes/routes.go           Chi router — POST /create-job, GET /job/:id/status, GET /health
 services/
@@ -123,13 +123,13 @@ curl http://localhost:5000/health
 
 ## Concurrency Model
 
-| Mechanism | Purpose |
-|---|---|
-| **Goroutines** | N configurable workers running in parallel |
-| **Buffered channel** | Distributes jobs from the PG listener to workers |
-| **sync.WaitGroup** | Parallelizes HTTP checks within a single health-check job |
-| **pgxpool** | Connection pooling (max 10, min 2, 1h lifetime) |
-| **PG LISTEN/NOTIFY** | Event-driven dispatch — no polling |
+| Mechanism            | Purpose                                                   |
+| -------------------- | --------------------------------------------------------- |
+| **Goroutines**       | N configurable workers running in parallel                |
+| **Buffered channel** | Distributes jobs from the PG listener to workers          |
+| **sync.WaitGroup**   | Parallelizes HTTP checks within a single health-check job |
+| **pgxpool**          | Connection pooling (max 10, min 2, 1h lifetime)           |
+| **PG LISTEN/NOTIFY** | Event-driven dispatch — no polling                        |
 
 ## Job Lifecycle
 
@@ -141,8 +141,8 @@ pending ──► processing ──► completed
 
 ## Supported Job Types
 
-| Type | Description |
-|---|---|
+| Type           | Description                                                                                                                         |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `health-check` | Performs concurrent HTTP GET requests against a list of URLs and records status codes, response bodies, and success/failure per URL |
 
 New job types can be added by implementing a handler function and registering it in `jobs/handler.go`.

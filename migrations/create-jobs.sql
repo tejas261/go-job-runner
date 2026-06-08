@@ -32,7 +32,7 @@ CREATE INDEX idx_jobs_status ON job(status);
 CREATE INDEX idx_jobs_scheduled_at ON job(scheduled_at) WHERE scheduled_at IS NOT NULL;
 CREATE INDEX idx_jobs_type ON job(type);
 
-CREATE INDEX idx_job_results_job_id ON job_result(job_id);  
+CREATE INDEX idx_job_result_job_id ON job_result(job_id);  
 
 CREATE INDEX idx_job_schedules_next_run ON schedule(next_run);
 

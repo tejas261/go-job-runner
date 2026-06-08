@@ -95,7 +95,7 @@ func processJobs(ctx context.Context, pool *pgxpool.Pool, jobCh <-chan string, w
 
 		if len(payload) == 0 || string(payload) == "null" {
 			err := pool.QueryRow(ctx,
-				"SELECT job_payload FROM job_results WHERE job_id = $1",
+				"SELECT job_payload FROM job_result WHERE job_id = $1",
 				jobID).Scan(&payload)
 			if err != nil {
 				log.Printf("failed to fetch job: %v", err)
