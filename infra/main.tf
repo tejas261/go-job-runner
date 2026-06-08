@@ -6,6 +6,13 @@ terraform {
       version = "~>3.100"
     }
   }
+
+  backend "azurerm" {
+    resource_group_name  = "tfstate-rg"
+    storage_account_name = "tfstatejobrunner"
+    container_name       = "tfstate"
+    key                  = "terraform.tfstate"
+  }
 }
 
 provider "azurerm" {
@@ -14,7 +21,7 @@ provider "azurerm" {
 
 resource "azurerm_resource_group" "job-runner" {
   name     = "job-runner-resources"
-  location = "South India"
+  location = "Central India"
 }
 
 resource "azurerm_virtual_network" "job-runner" {
@@ -22,27 +29,27 @@ resource "azurerm_virtual_network" "job-runner" {
   address_space       = ["10.0.0.0/16"]
   location            = azurerm_resource_group.job-runner.location
   resource_group_name = azurerm_resource_group.job-runner.name
-}   
+}
 
 resource "azurerm_subnet" "aks" {
   name                 = "aks-subnet"
   resource_group_name  = azurerm_resource_group.job-runner.name
   virtual_network_name = azurerm_virtual_network.job-runner.name
   address_prefixes     = ["10.0.1.0/24"]
-}     
+}
 
 resource "azurerm_kubernetes_cluster" "k8s" {
-  name                  = "job-runner-k8s"
+  name                = "job-runner-k8s"
   location            = azurerm_resource_group.job-runner.location
   resource_group_name = azurerm_resource_group.job-runner.name
-   dns_prefix          = "job-runner-aks"
+  dns_prefix          = "job-runner-aks"
 
-    default_node_pool {
+  default_node_pool {
     name       = "agentpool"
     node_count = 1
-    vm_size    = "Standard_B2s"
+    vm_size = "Standard_D2s_v3"
   }
-    identity {
+  identity {
     type = "SystemAssigned"
   }
 }
