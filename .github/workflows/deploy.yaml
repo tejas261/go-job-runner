@@ -8,8 +8,25 @@ env:
   IMAGE_NAME: ${{ secrets.DOCKER_HUB_USERNAME }}/job-runner
 
 jobs:
+  Changes:
+    runs-on: ubuntu-latest
+    outputs:
+      infra: ${{ steps.filter.outputs.infra }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            infra:
+              - 'infra/**'
+
   Infra-Setup:
-    if: contains(join(github.event.commits.*.modified, ','), 'infra/main.tf')
+    needs: Changes
+    if: needs.Changes.outputs.infra == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
