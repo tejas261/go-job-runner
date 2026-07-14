@@ -9,6 +9,7 @@ import (
 	"github.com/go-job-runner/database"
 	"github.com/go-job-runner/routes"
 	"github.com/go-job-runner/workerpool"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -21,6 +22,7 @@ func main() {
 	router := chi.NewRouter()
 
 	router.Get("/health", routes.HealthCheck)
+	router.Handle("/metrics", promhttp.Handler())
 	router.Get("/job/{id}/status", routes.GetJobStatusByID)
 	router.Post("/create-job", routes.CreateJob)
 

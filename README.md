@@ -170,3 +170,32 @@ go run cmd/server/main.go
 - **Chi** — HTTP router
 - **pgx** — PostgreSQL driver with connection pooling
 - **PostgreSQL** — job persistence + LISTEN/NOTIFY for real-time dispatch
+
+## Monitoring (Prometheus + Grafana)
+
+The service exposes Prometheus metrics at `GET /metrics`:
+
+| Metric | Type | Meaning |
+|---|---|---|
+| `jobrunner_jobs_processed_total{job_type,status}` | counter | Jobs completed/failed (throughput + errors) |
+| `jobrunner_job_duration_seconds{job_type}` | histogram | Job execution latency |
+| `jobrunner_queue_depth` / `jobrunner_queue_capacity` | gauge | Dispatch channel saturation |
+| `jobrunner_notifications_received_total` | counter | pg_notify events received (input rate) |
+
+The observability stack itself is deployed via GitOps (see the
+[go-job-runner-gitops](https://github.com/tejas261/go-job-runner-gitops) repo):
+
+- **kube-prometheus-stack** (Prometheus Operator + Grafana + Alertmanager) is
+  declared as an ArgoCD `Application` (`argocd/monitoring-app.yaml`), pinned to
+  a chart version and synced with prune + self-heal + server-side apply.
+- Prometheus discovers the app through the `prometheus.io/scrape` pod
+  annotations set by the Helm chart (annotation-based `kubernetes_sd` scrape
+  config in the monitoring app's values).
+- The **"Job Runner — Golden Signals"** Grafana dashboard ships with the
+  service's own chart as a ConfigMap labeled `grafana_dashboard: "1"`, imported
+  automatically by the Grafana sidecar — dashboards as code, versioned next to
+  the chart that emits the metrics.
+
+Rationale: instrumentation lives in the app (the code owns its metrics);
+scrape config, the monitoring stack, and dashboards are cluster state and live
+in the GitOps repo.

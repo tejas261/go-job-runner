@@ -10,6 +10,7 @@ import (
 	"github.com/go-job-runner/configs"
 	"github.com/go-job-runner/database"
 	"github.com/go-job-runner/jobs"
+	"github.com/go-job-runner/metrics"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/robfig/cron/v3"
 )
@@ -67,6 +68,7 @@ func listenToPostgres(ctx context.Context, pool *pgxpool.Pool, channel chan stri
 		}
 		fmt.Println("Received notification", notification)
 		fmt.Printf("Received notification on channel '%s': %s\n", notification.Channel, notification.Payload)
+		metrics.NotificationsReceived.Inc()
 		var job jobNotification
 		if err := json.Unmarshal([]byte(notification.Payload), &job); err != nil {
 			log.Printf("failed to parse notification payload: %v", err)
@@ -106,15 +108,19 @@ func processJobs(ctx context.Context, pool *pgxpool.Pool, jobCh <-chan string, w
 		jobRepo.UpdateByID(ctx, jobID, []string{"status"}, []any{"processing"})
 
 		// Call your handler
+		start := time.Now()
 		runErr := jobs.Run(ctx, jobID, jobType, payload)
+		metrics.JobDuration.WithLabelValues(jobType).Observe(time.Since(start).Seconds())
 
 		if runErr != nil {
 			jobRepo.UpdateByID(ctx, jobID,
 				[]string{"status", "last_error"},
 				[]any{"failed", runErr.Error()})
+			metrics.JobsProcessed.WithLabelValues(jobType, "failed").Inc()
 		} else {
 			jobRepo.UpdateByID(ctx, jobID,
 				[]string{"status"}, []any{"completed"})
+			metrics.JobsProcessed.WithLabelValues(jobType, "completed").Inc()
 		}
 	}
 }
@@ -203,6 +209,7 @@ func RunWorker() {
 
 	ctx := context.Background()
 	notificationChannel := make(chan string, 100)
+	metrics.RegisterQueueDepth(notificationChannel)
 
 	if err := pool.Ping(context.Background()); err != nil {
 		log.Fatal(err)
