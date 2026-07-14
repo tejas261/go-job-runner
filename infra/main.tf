@@ -21,7 +21,7 @@ provider "azurerm" {
 
 resource "azurerm_resource_group" "job-runner" {
   name     = "job-runner-resources"
-  location = "Central India"
+  location = "South India"
 }
 
 resource "azurerm_virtual_network" "job-runner" {
@@ -46,7 +46,7 @@ resource "azurerm_kubernetes_cluster" "k8s" {
 
   default_node_pool {
     name       = "agentpool"
-    node_count = 1
+    node_count = 2
     vm_size = "Standard_D2s_v3"
   }
   identity {
